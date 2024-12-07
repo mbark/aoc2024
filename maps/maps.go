@@ -103,6 +103,15 @@ func (m Map[T]) At(c Coordinate) T {
 	return m.Cells[c.Y][c.X]
 }
 
+func (m Map[T]) AtSafe(c Coordinate) T {
+	var t T
+	if !m.Exists(c) {
+		return t
+	}
+
+	return m.Cells[c.Y][c.X]
+}
+
 func (m Map[T]) ArrPos(c Coordinate) int {
 	return c.Y*m.Rows + c.X
 }
