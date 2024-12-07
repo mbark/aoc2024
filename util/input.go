@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"os"
+	"regexp"
 )
 
 func GetInput(day int) string {
@@ -26,6 +27,24 @@ func GetInput(day int) string {
 	must(err)
 
 	return string(bytes)
+}
+
+func RegexCaptureGroups(re *regexp.Regexp, input string) []map[string]string {
+	matches := re.FindAllStringSubmatch(input, -1)
+	groupNames := re.SubexpNames()
+
+	var results []map[string]string
+	for _, match := range matches {
+		result := make(map[string]string)
+		for i, name := range groupNames {
+			if i > 0 && name != "" {
+				result[name] = match[i]
+			}
+		}
+		results = append(results, result)
+	}
+
+	return results
 }
 
 func must(err error) {
