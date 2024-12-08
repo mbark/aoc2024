@@ -15,6 +15,15 @@ func ReadInput(in, splitBy string) []string {
 	return strings.Split(trimmed, splitBy)
 }
 
+func Str2IntSlice(in []string) []int {
+	var list []int
+	for _, s := range in {
+		list = append(list, Str2Int(s))
+	}
+
+	return list
+}
+
 func NumberList(in string, separator string) []int {
 	var list []int
 	for _, s := range strings.Split(in, separator) {
@@ -42,6 +51,11 @@ func NewBoolMatrix(width, height int) map[int]map[int]bool {
 	}
 
 	return m
+}
+func CopyList[T any](l []T) []T {
+	cp := make([]T, len(l))
+	copy(cp, l)
+	return cp
 }
 
 func WithTime() func() {
