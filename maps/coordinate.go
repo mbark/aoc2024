@@ -13,6 +13,10 @@ type Coordinate struct {
 	Y int
 }
 
+func C(x, y int) Coordinate {
+	return Coordinate{X: x, Y: y}
+}
+
 func CoordinateFromString(s string) Coordinate {
 	split := strings.Split(s, ",")
 	return Coordinate{X: util.ParseInt[int](split[0]), Y: util.ParseInt[int](split[1])}

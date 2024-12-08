@@ -127,13 +127,13 @@ func (m Map[T]) Coordinates() []Coordinate {
 	return coordinates
 }
 
-func (m Map[T]) CopyWith(fn func(val T) T) Map[T] {
+func (m Map[T]) CopyWith(fn func(c Coordinate, val T) T) Map[T] {
 	cells := make([][]T, len(m.Cells))
 
 	for i := range m.Cells {
 		row := make([]T, len(m.Cells[i]))
-		for j, cell := range m.Cells[i] {
-			row[j] = fn(cell)
+		for j, val := range m.Cells[i] {
+			row[j] = fn(Coordinate{X: j, Y: i}, val)
 		}
 
 		cells[i] = row
