@@ -3,6 +3,7 @@ package day6
 import (
 	"fmt"
 
+	"github.com/mbark/aoc2024/fns"
 	"github.com/mbark/aoc2024/maps"
 )
 
@@ -42,6 +43,30 @@ func Run(input string, isTest bool) {
 }
 
 func first(m maps.Map[byte], at maps.Coordinate) int {
+	return len(walk(m, at))
+}
+
+func second(m maps.Map[byte], at maps.Coordinate) int {
+	var found int
+	for _, c := range walk(m, at) {
+		switch m.At(c) {
+		case Guard:
+			continue
+		case Obstacle:
+			continue
+		default:
+			m.Set(c, Obstacle)
+			if isCycle(m, at) {
+				found += 1
+			}
+			m.Set(c, Empty)
+		}
+	}
+
+	return found
+}
+
+func walk(m maps.Map[byte], at maps.Coordinate) []maps.Coordinate {
 	visited := map[maps.Coordinate]bool{}
 	dir := maps.Up
 	for {
@@ -60,31 +85,7 @@ func first(m maps.Map[byte], at maps.Coordinate) int {
 
 	}
 
-	return len(visited)
-}
-
-func second(m maps.Map[byte], at maps.Coordinate) int {
-	var found int
-	for _, c := range m.Coordinates() {
-		switch m.At(c) {
-		case Guard:
-			continue
-		case Obstacle:
-			continue
-		default:
-			cp := m.CopyWith(func(c1 maps.Coordinate, val byte) byte {
-				if c == c1 {
-					return Obstacle
-				}
-				return val
-			})
-			if isCycle(cp, at) {
-				found += 1
-			}
-		}
-	}
-
-	return found
+	return fns.Keys(visited)
 }
 
 type visit struct {
