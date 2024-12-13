@@ -3,6 +3,7 @@ package maps
 import "C"
 import (
 	"fmt"
+	"iter"
 	"strconv"
 	"strings"
 
@@ -35,6 +36,10 @@ func NewIntMap(definition string) Map[int] {
 	}
 
 	return Map[int]{Columns: cols + 1, Rows: rows + 1, Cells: cells}
+}
+
+func NewByte(definition string) Map[byte] {
+	return New[byte](definition, func(x, y int, b byte) byte { return b })
 }
 
 func New[T any](definition string, fn func(x, y int, b byte) T) Map[T] {
@@ -78,6 +83,30 @@ func MapFromCoordinates[T any](coordinates map[Coordinate]T) Map[T] {
 	}
 
 	return Map[T]{Columns: cols, Rows: rows, Cells: cells}
+}
+
+func (m Map[T]) IterHorizontal() iter.Seq[Coordinate] {
+	return func(yield func(coordinate Coordinate) bool) {
+		for y := 0; y < m.Rows; y++ {
+			for x := 0; x < m.Columns; x++ {
+				if !yield(Coordinate{X: x, Y: y}) {
+					return
+				}
+			}
+		}
+	}
+}
+
+func (m Map[T]) IterVertical() iter.Seq[Coordinate] {
+	return func(yield func(coordinate Coordinate) bool) {
+		for x := 0; x < m.Columns; x++ {
+			for y := 0; y < m.Rows; y++ {
+				if !yield(Coordinate{X: x, Y: y}) {
+					return
+				}
+			}
+		}
+	}
 }
 
 func (m Map[T]) WithPadding(n, e, s, w int) Map[T] {
