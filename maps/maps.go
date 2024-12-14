@@ -16,6 +16,15 @@ type Map[T any] struct {
 	Cells   [][]T
 }
 
+func NewEmpty[T any](columns, rows int) Map[T] {
+	cells := make([][]T, rows)
+	for i := range cells {
+		cells[i] = make([]T, columns)
+	}
+
+	return Map[T]{Columns: columns, Rows: rows, Cells: cells}
+}
+
 func (m Map[T]) ArraySize() int {
 	return (m.Rows + 1) * (m.Columns + 1)
 }
@@ -141,6 +150,11 @@ func (m Map[T]) AtSafe(c Coordinate) T {
 	return m.Cells[c.Y][c.X]
 }
 
+// Get is just an alias for at.
+func (m Map[T]) Get(c Coordinate) T {
+	return m.At(c)
+}
+
 func (m Map[T]) ArrPos(c Coordinate) int {
 	return c.Y*m.Rows + c.X
 }
@@ -205,6 +219,13 @@ func (m *Map[T]) Set(c Coordinate, val T) {
 func (m Map[T]) Exists(c Coordinate) bool {
 	return c.X >= 0 && c.X < m.Columns &&
 		c.Y >= 0 && c.Y < m.Rows
+}
+
+func (m Map[T]) WrapCoordinate(c Coordinate) Coordinate {
+	return Coordinate{
+		X: (c.X + m.Columns) % m.Columns,
+		Y: (c.Y + m.Rows) % m.Rows,
+	}
 }
 
 func (m Map[T]) filterNonExistent(coords []Coordinate) []Coordinate {

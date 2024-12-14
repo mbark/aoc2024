@@ -47,6 +47,17 @@ func RegexCaptureGroups(re *regexp.Regexp, input string) []map[string]string {
 	return results
 }
 
+func RegexSubexps(re *regexp.Regexp, input string) []string {
+	matches := re.FindAllStringSubmatch(input, -1)
+
+	var results []string
+	for _, match := range matches {
+		results = append(results, match[1:]...)
+	}
+
+	return results
+}
+
 func must(err error) {
 	if err != nil {
 		panic(err)

@@ -1,6 +1,8 @@
 package maths
 
-import "math"
+import (
+	"math"
+)
 
 func GCD(a, b int) int {
 	for b != 0 {
