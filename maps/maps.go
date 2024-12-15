@@ -216,6 +216,10 @@ func (m *Map[T]) Set(c Coordinate, val T) {
 	m.Cells[c.Y][c.X] = val
 }
 
+func (m *Map[T]) Move(from, to Coordinate, d T) {
+	m.Cells[to.Y][to.X], m.Cells[from.Y][from.X] = m.Cells[from.Y][from.X], d
+}
+
 func (m Map[T]) Exists(c Coordinate) bool {
 	return c.X >= 0 && c.X < m.Columns &&
 		c.Y >= 0 && c.Y < m.Rows

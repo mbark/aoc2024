@@ -40,6 +40,17 @@ func Some[T any](s []T, fn func(t T) bool) bool {
 	return false
 }
 
+func FilterMap[T, R any](s []T, fn func(t T) (R, bool)) []R {
+	var arr []R
+	for _, t := range s {
+		r, ok := fn(t)
+		if ok {
+			arr = append(arr, r)
+		}
+	}
+	return arr
+}
+
 func Map[T, R any](s []T, fn func(t T) R) []R {
 	arr := make([]R, len(s))
 	for i, t := range s {

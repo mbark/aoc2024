@@ -180,6 +180,37 @@ func (d Direction) String() string {
 	return ""
 }
 
+func DirectionFromString(s string) Direction {
+	switch s {
+	case "<":
+		return Left
+	case ">":
+		return Right
+	case "^":
+		return Up
+	case "v":
+		return Down
+	case "N":
+		return North
+	case "E":
+		return East
+	case "W":
+		return West
+	case "S":
+		return South
+	case "NE":
+		return NorthEast
+	case "NW":
+		return NorthWest
+	case "SE":
+		return SouthEast
+	case "SW":
+		return SouthWest
+	}
+
+	panic(fmt.Sprintf("unknown direction: '%s'", s))
+}
+
 type CoordinateArray struct {
 	Coordinates []Coordinate
 
