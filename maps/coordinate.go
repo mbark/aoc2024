@@ -8,6 +8,8 @@ import (
 	"github.com/mbark/aoc2024/util"
 )
 
+var CZero = Coordinate{}
+
 type Coordinate struct {
 	X int
 	Y int
