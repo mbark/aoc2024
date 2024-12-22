@@ -12,6 +12,13 @@ import (
 	"github.com/mbark/aoc2024/util"
 )
 
+type memoKey struct {
+	pos maps.Coordinate
+	key string
+}
+
+type Memo map[memoKey][]moves
+
 type Mapping map[byte]map[byte][][]maps.Direction
 
 func (m Mapping) String() string {
@@ -52,7 +59,12 @@ func Run(input string, isTest bool) {
 	}
 
 	fillMaps()
+	for i := 0; i < 25; i++ {
+		memo[i] = Memo{}
+	}
+
 	fmt.Println("first:", first(util.ReadInput(input, "\n")))
+	fmt.Println("second:", second(util.ReadInput(input, "\n")))
 }
 
 var re = regexp.MustCompile(`[0-9]+`)
@@ -60,7 +72,7 @@ var re = regexp.MustCompile(`[0-9]+`)
 func first(inputs []string) int {
 	var sum int
 	for _, in := range inputs {
-		presses := pressKey(numKeyMapping, numKeyPad, maps.C(numKeyPad.Columns-1, numKeyPad.Rows-1), in)
+		presses := pressKey(Memo{}, numKeyMapping, numKeyPad, maps.C(numKeyPad.Columns-1, numKeyPad.Rows-1), in)
 		var states []string
 		var nextStates []string
 
@@ -73,7 +85,7 @@ func first(inputs []string) int {
 		setState()
 
 		for _, s := range states {
-			presses := pressKey(dirKeyMapping, dirKeyPad, maps.C(dirKeyPad.Columns-1, 0), s)
+			presses := pressKey(memo[0], dirKeyMapping, dirKeyPad, maps.C(dirKeyPad.Columns-1, 0), s)
 			for _, p := range presses {
 				slices.Reverse(p)
 				nextStates = append(nextStates, p.flatten())
@@ -82,7 +94,7 @@ func first(inputs []string) int {
 		setState()
 
 		for _, s := range states {
-			presses := pressKey(dirKeyMapping, dirKeyPad, maps.C(dirKeyPad.Columns-1, 0), s)
+			presses := pressKey(memo[1], dirKeyMapping, dirKeyPad, maps.C(dirKeyPad.Columns-1, 0), s)
 			for _, p := range presses {
 				slices.Reverse(p)
 				nextStates = append(nextStates, p.flatten())
@@ -102,7 +114,7 @@ func first(inputs []string) int {
 func second(inputs []string) int {
 	var sum int
 	for _, in := range inputs {
-		presses := pressKey(numKeyMapping, numKeyPad, maps.C(numKeyPad.Columns-1, numKeyPad.Rows-1), in)
+		presses := pressKey(Memo{}, numKeyMapping, numKeyPad, maps.C(numKeyPad.Columns-1, numKeyPad.Rows-1), in)
 		var states []string
 		var nextStates []string
 
@@ -114,23 +126,17 @@ func second(inputs []string) int {
 		}
 		setState()
 
-		for _, s := range states {
-			presses := pressKey(dirKeyMapping, dirKeyPad, maps.C(dirKeyPad.Columns-1, 0), s)
-			for _, p := range presses {
-				slices.Reverse(p)
-				nextStates = append(nextStates, p.flatten())
+		for i := 0; i < 25; i++ {
+			fmt.Println("robot", i)
+			for _, s := range states {
+				presses := pressKey(memo[i], dirKeyMapping, dirKeyPad, maps.C(dirKeyPad.Columns-1, 0), s)
+				for _, p := range presses {
+					slices.Reverse(p)
+					nextStates = append(nextStates, p.flatten())
+				}
 			}
+			setState()
 		}
-		setState()
-
-		for _, s := range states {
-			presses := pressKey(dirKeyMapping, dirKeyPad, maps.C(dirKeyPad.Columns-1, 0), s)
-			for _, p := range presses {
-				slices.Reverse(p)
-				nextStates = append(nextStates, p.flatten())
-			}
-		}
-		setState()
 
 		shortest := len(states[0])
 		i := util.Str2Int(re.FindString(in))
@@ -158,18 +164,13 @@ func (m moves) flatten() string {
 	return strings.Join(m, "")
 }
 
-type memoKey struct {
-	keys string
-}
+var memo = map[int]Memo{}
 
-var memo = map[memoKey][]moves{}
-
-func pressKey(mapping Mapping, m maps.Map[byte], at maps.Coordinate, keys string) (ret []moves) {
-	//key := memoKey{pos: at, keys: keys}
-	//if v, ok := memo[key]; ok {
-	//	return v
-	//}
-	//defer func() { memo[key] = ret }()
+func pressKey(memo Memo, mapping Mapping, m maps.Map[byte], at maps.Coordinate, keys string) (ret []moves) {
+	if v, ok := memo[memoKey{pos: at, key: keys}]; ok {
+		return v
+	}
+	defer func() { memo[memoKey{pos: at, key: keys}] = ret }()
 
 	if len(keys) == 0 {
 		return []moves{{}}
@@ -186,7 +187,7 @@ func pressKey(mapping Mapping, m maps.Map[byte], at maps.Coordinate, keys string
 
 	for _, dirs := range paths {
 		newAt := at.Apply(dirs...)
-		for _, mv := range pressKey(mapping, m, newAt, next) {
+		for _, mv := range pressKey(memo, mapping, m, newAt, next) {
 			ms = append(ms, append(util.CopyList(mv), dirString(dirs)+"A"))
 		}
 	}
@@ -202,6 +203,7 @@ func fillMaps() {
 	fillMap(numKeyPad, numKeyMapping)
 	fillMap(dirKeyPad, dirKeyMapping)
 
+	aPos := maps.C(dirKeyPad.Columns-1, dirKeyPad.Rows-1)
 	for c1 := range dirKeyPad.IterHorizontal() {
 		for c2 := range dirKeyPad.IterVertical() {
 			if c1 == c2 {
@@ -213,23 +215,20 @@ func fillMaps() {
 				continue
 			}
 
-			fmt.Println(string(dirKeyPad.At(c1)), "->", string(dirKeyPad.At(c2)), ":", mapping)
 			shortest := math.MaxInt
 			var shortestMappings []int
 			for i, m := range mapping {
-				paths := pressKey(dirKeyMapping, dirKeyPad, c1, dirString(m))
-				if len(paths[0]) < shortest {
+				paths := pressKey(Memo{}, dirKeyMapping, dirKeyPad, aPos, dirString(m)+"A")
+				if len(paths[0].flatten()) < shortest {
 					shortest = len(paths[0].flatten())
 					shortestMappings = nil
 				}
-				fmt.Println("mapping", dirString(m), paths[0].flatten())
 
 				if len(paths[0].flatten()) == shortest {
 					shortestMappings = append(shortestMappings, i)
 				}
 			}
 
-			fmt.Println(string(dirKeyPad.At(c1)), "->", string(dirKeyPad.At(c2)), ":", mapping, "shortest", shortestMappings)
 			dirKeyMapping[dirKeyPad.At(c1)][dirKeyPad.At(c2)] = fns.Map(shortestMappings, func(i int) []maps.Direction { return mapping[i] })
 		}
 	}
