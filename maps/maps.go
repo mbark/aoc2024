@@ -264,6 +264,23 @@ func (m Map[T]) Adjacent(c Coordinate) []Coordinate {
 	return coordinates[:at]
 }
 
+func (m Map[T]) IterAdjacent(c Coordinate) iter.Seq2[Coordinate, Direction] {
+	return func(yield func(Coordinate, Direction) bool) {
+		for _, x := range []int{-1, 1} {
+			c := Coordinate{X: c.X + x, Y: c.Y}
+			if m.Exists(c) {
+				yield(c, Direction{X: x, Y: 0})
+			}
+		}
+		for _, y := range []int{-1, 1} {
+			c := Coordinate{X: c.X, Y: c.Y + y}
+			if m.Exists(c) {
+				yield(c, Direction{X: 0, Y: y})
+			}
+		}
+	}
+}
+
 func (m Map[T]) Surrounding(c Coordinate) []Coordinate {
 	var coordinates []Coordinate
 	for _, x := range []int{-1, 0, 1} {

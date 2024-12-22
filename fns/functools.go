@@ -138,3 +138,11 @@ func Repeat[T any](t T, n int) []T {
 	}
 	return arr
 }
+
+func Sum[T ~int | ~float64](s []T) T {
+	var sum T
+	for _, t := range s {
+		sum += t
+	}
+	return sum
+}

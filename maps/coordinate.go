@@ -61,6 +61,14 @@ func (c Coordinate) Adjacent() []Coordinate {
 	}
 }
 
+func (c Coordinate) Apply(dirs ...Direction) Coordinate {
+	for _, d := range dirs {
+		c = d.Apply(c)
+	}
+
+	return c
+}
+
 func (c Coordinate) Surrounding() []Coordinate {
 	return []Coordinate{
 		{X: c.X, Y: c.Y - 1},     // N
