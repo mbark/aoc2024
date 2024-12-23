@@ -44,9 +44,8 @@ func Run(input string, isTest bool) {
 		memo[i] = Memo{}
 	}
 
-	fmt.Println(pressKey(dirKeyMapping, dirKeyPad, maps.C(dirKeyPad.Columns-1, 0), "<A"))
-	//fmt.Println("first:", solve(util.ReadInput(input, "\n"), 2))
-	//fmt.Println("second:", solve(util.ReadInput(input, "\n"), 25))
+	fmt.Println("first:", solve(util.ReadInput(input, "\n"), 2))
+	fmt.Println("second:", solve(util.ReadInput(input, "\n"), 25))
 }
 
 func solve(inputs []string, robots int) int {
@@ -57,16 +56,14 @@ func solve(inputs []string, robots int) int {
 	}
 
 	for _, in := range inputs {
-		states := pressKey(numKeyMapping, numKeyPad, maps.C(numKeyPad.Columns-1, numKeyPad.Rows-1), in)
-		shortest := math.MaxInt
-		for _, s := range states {
+		states := pressKey(numKeyMapping, 'A', in)
+		totals := make([]int, len(states))
+		for i, s := range states {
 			for _, group := range findGroups(s) {
-				l := recurse(dirKeyMapping, dirKeyPad, group, robots)
-				if shortest > l {
-					shortest = l
-				}
+				totals[i] += recurse(dirKeyMapping, dirKeyPad, group, robots)
 			}
 		}
+		shortest := findMin(totals)
 
 		i := util.Str2Int(re.FindString(in))
 		fmt.Println(in, "->", shortest, "*", i, "=", shortest*i)
@@ -88,9 +85,7 @@ func recurse(mapping Mapping, m maps.Map[byte], keys string, depth int) (ret int
 	}
 	defer func() { memo[depth][keys] = ret }()
 
-	fmt.Println("recurse", keys, "depth", depth, "pressing", keys)
-	ms := filterShortest(pressKey(mapping, m, maps.C(dirKeyPad.Columns-1, 0), keys), length)
-	fmt.Println("with", keys, "depth", depth, "got", ms)
+	ms := filterShortest(pressKey(mapping, 'A', keys), length)
 	totals := make([]int, len(ms))
 	for i, s := range ms {
 		totals[i] = 0
@@ -117,33 +112,29 @@ func findMin(i []int) int {
 	return min
 }
 
-func pressKey(mapping Mapping, m maps.Map[byte], at maps.Coordinate, keys string) []string {
+func pressKey(mapping Mapping, at byte, keys string) []string {
 	k := keys[0]
 	next := keys[1:]
 
-	paths := mapping[m.At(at)][k]
-	var nextAt maps.Coordinate
-	if m.At(at) == k {
+	paths := mapping[at][k]
+	if at == k {
 		paths = [][]maps.Direction{nil}
 	}
 	var pMoves []string
 	for _, p := range paths {
-		nextAt = at.Apply(p...)
 		pMoves = append(pMoves, dirString(p)+"A")
 	}
 	if len(next) == 0 {
 		return pMoves
 	}
 
-	fmt.Println("pressing key", string(k), "at", at, "first", pMoves)
 	var nextMoves []string
-	for _, mv := range filterShortest(pressKey(mapping, m, nextAt, next), length) {
+	for _, mv := range filterShortest(pressKey(mapping, k, next), length) {
 		for _, p := range pMoves {
 			nextMoves = append(nextMoves, p+mv)
 		}
 	}
 
-	fmt.Println("pressing key", string(k), "at", at, "second", nextMoves)
 	return nextMoves
 }
 
@@ -181,7 +172,6 @@ func fillMaps() {
 	fillMap(numKeyPad, numKeyMapping)
 	fillMap(dirKeyPad, dirKeyMapping)
 
-	aPos := maps.C(dirKeyPad.Columns-1, dirKeyPad.Rows-1)
 	for c1 := range dirKeyPad.IterHorizontal() {
 		for c2 := range dirKeyPad.IterVertical() {
 			if c1 == c2 {
@@ -196,7 +186,7 @@ func fillMaps() {
 			shortest := math.MaxInt
 			var shortestMappings []int
 			for i, m := range mapping {
-				paths := pressKey(dirKeyMapping, dirKeyPad, aPos, dirString(m)+"A")
+				paths := pressKey(dirKeyMapping, 'A', dirString(m)+"A")
 				if len(paths[0]) < shortest {
 					shortest = len(paths[0])
 					shortestMappings = nil
