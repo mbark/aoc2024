@@ -4,33 +4,12 @@ import (
 	"fmt"
 	"math"
 	"regexp"
-	"slices"
 	"strings"
 
 	"github.com/mbark/aoc2024/fns"
 	"github.com/mbark/aoc2024/maps"
 	"github.com/mbark/aoc2024/util"
 )
-
-type memoKey struct {
-	pos maps.Coordinate
-	key string
-}
-
-type Memo map[memoKey][]moves
-
-type Mapping map[byte]map[byte][][]maps.Direction
-
-func (m Mapping) String() string {
-	var sb strings.Builder
-	for k, v := range m {
-		for k2, v2 := range v {
-			vs := strings.Join(fns.Map(v2, func(d []maps.Direction) string { return dirString(d) }), ",")
-			sb.WriteString(fmt.Sprintf("%c->%c: %s\n", k, k2, vs))
-		}
-	}
-	return sb.String()
-}
 
 var (
 	numKeyPad = maps.NewByte(`
@@ -43,6 +22,8 @@ _^A
 <v>`)
 	numKeyMapping = Mapping{}
 	dirKeyMapping = Mapping{}
+	reA           = regexp.MustCompile(`A`)
+	re            = regexp.MustCompile(`[0-9]+`)
 )
 
 const testInput = `
@@ -63,88 +44,107 @@ func Run(input string, isTest bool) {
 		memo[i] = Memo{}
 	}
 
-	fmt.Println("first:", first(util.ReadInput(input, "\n")))
-	fmt.Println("second:", second(util.ReadInput(input, "\n")))
+	fmt.Println(pressKey(dirKeyMapping, dirKeyPad, maps.C(dirKeyPad.Columns-1, 0), "<A"))
+	//fmt.Println("first:", solve(util.ReadInput(input, "\n"), 2))
+	//fmt.Println("second:", solve(util.ReadInput(input, "\n"), 25))
 }
 
-var re = regexp.MustCompile(`[0-9]+`)
-
-func first(inputs []string) int {
+func solve(inputs []string, robots int) int {
 	var sum int
-	for _, in := range inputs {
-		presses := pressKey(Memo{}, numKeyMapping, numKeyPad, maps.C(numKeyPad.Columns-1, numKeyPad.Rows-1), in)
-		var states []string
-		var nextStates []string
 
-		setState := func() { states, nextStates = filterShortest(nextStates, func(t string) int { return len(t) }), nil }
-
-		for _, p := range presses {
-			slices.Reverse(p)
-			nextStates = append(nextStates, p.flatten())
-		}
-		setState()
-
-		for _, s := range states {
-			presses := pressKey(memo[0], dirKeyMapping, dirKeyPad, maps.C(dirKeyPad.Columns-1, 0), s)
-			for _, p := range presses {
-				slices.Reverse(p)
-				nextStates = append(nextStates, p.flatten())
-			}
-		}
-		setState()
-
-		for _, s := range states {
-			presses := pressKey(memo[1], dirKeyMapping, dirKeyPad, maps.C(dirKeyPad.Columns-1, 0), s)
-			for _, p := range presses {
-				slices.Reverse(p)
-				nextStates = append(nextStates, p.flatten())
-			}
-		}
-		setState()
-
-		shortest := len(states[0])
-		i := util.Str2Int(re.FindString(in))
-		fmt.Println(in, "->", shortest, "*", i, "=", shortest*i)
-		sum += shortest * i
+	for i := 0; i < robots+1; i++ {
+		memo[i] = Memo{}
 	}
 
-	return sum
-}
-
-func second(inputs []string) int {
-	var sum int
 	for _, in := range inputs {
-		presses := pressKey(Memo{}, numKeyMapping, numKeyPad, maps.C(numKeyPad.Columns-1, numKeyPad.Rows-1), in)
-		var states []string
-		var nextStates []string
-
-		setState := func() { states, nextStates = filterShortest(nextStates, func(t string) int { return len(t) }), nil }
-
-		for _, p := range presses {
-			slices.Reverse(p)
-			nextStates = append(nextStates, p.flatten())
-		}
-		setState()
-
-		for i := 0; i < 25; i++ {
-			fmt.Println("robot", i)
-			for _, s := range states {
-				presses := pressKey(memo[i], dirKeyMapping, dirKeyPad, maps.C(dirKeyPad.Columns-1, 0), s)
-				for _, p := range presses {
-					slices.Reverse(p)
-					nextStates = append(nextStates, p.flatten())
+		states := pressKey(numKeyMapping, numKeyPad, maps.C(numKeyPad.Columns-1, numKeyPad.Rows-1), in)
+		shortest := math.MaxInt
+		for _, s := range states {
+			for _, group := range findGroups(s) {
+				l := recurse(dirKeyMapping, dirKeyPad, group, robots)
+				if shortest > l {
+					shortest = l
 				}
 			}
-			setState()
 		}
 
-		shortest := len(states[0])
 		i := util.Str2Int(re.FindString(in))
 		fmt.Println(in, "->", shortest, "*", i, "=", shortest*i)
 		sum += shortest * i
 	}
 
 	return sum
+}
+
+var memo = map[int]Memo{}
+
+func recurse(mapping Mapping, m maps.Map[byte], keys string, depth int) (ret int) {
+	if depth == 0 {
+		return len(keys)
+	}
+
+	if v, ok := memo[depth][keys]; ok {
+		return v
+	}
+	defer func() { memo[depth][keys] = ret }()
+
+	fmt.Println("recurse", keys, "depth", depth, "pressing", keys)
+	ms := filterShortest(pressKey(mapping, m, maps.C(dirKeyPad.Columns-1, 0), keys), length)
+	fmt.Println("with", keys, "depth", depth, "got", ms)
+	totals := make([]int, len(ms))
+	for i, s := range ms {
+		totals[i] = 0
+		for _, g := range findGroups(s) {
+			totals[i] += recurse(mapping, m, g, depth-1)
+		}
+	}
+
+	return findMin(totals)
+}
+
+func length(s string) int {
+	return len(s)
+}
+
+func findMin(i []int) int {
+	min := math.MaxInt
+	for _, v := range i {
+		if v < min {
+			min = v
+		}
+	}
+
+	return min
+}
+
+func pressKey(mapping Mapping, m maps.Map[byte], at maps.Coordinate, keys string) []string {
+	k := keys[0]
+	next := keys[1:]
+
+	paths := mapping[m.At(at)][k]
+	var nextAt maps.Coordinate
+	if m.At(at) == k {
+		paths = [][]maps.Direction{nil}
+	}
+	var pMoves []string
+	for _, p := range paths {
+		nextAt = at.Apply(p...)
+		pMoves = append(pMoves, dirString(p)+"A")
+	}
+	if len(next) == 0 {
+		return pMoves
+	}
+
+	fmt.Println("pressing key", string(k), "at", at, "first", pMoves)
+	var nextMoves []string
+	for _, mv := range filterShortest(pressKey(mapping, m, nextAt, next), length) {
+		for _, p := range pMoves {
+			nextMoves = append(nextMoves, p+mv)
+		}
+	}
+
+	fmt.Println("pressing key", string(k), "at", at, "second", nextMoves)
+	return nextMoves
 }
 
 func filterShortest[T any](paths []T, fn func(t T) int) []T {
@@ -158,41 +158,19 @@ func filterShortest[T any](paths []T, fn func(t T) int) []T {
 	return fns.Filter(paths, func(p T) bool { return fn(p) == shortest })
 }
 
-type moves []string
-
-func (m moves) flatten() string {
-	return strings.Join(m, "")
-}
-
-var memo = map[int]Memo{}
-
-func pressKey(memo Memo, mapping Mapping, m maps.Map[byte], at maps.Coordinate, keys string) (ret []moves) {
-	if v, ok := memo[memoKey{pos: at, key: keys}]; ok {
-		return v
-	}
-	defer func() { memo[memoKey{pos: at, key: keys}] = ret }()
-
-	if len(keys) == 0 {
-		return []moves{{}}
-	}
-
-	var ms []moves
-	k := keys[0]
-	next := keys[1:]
-
-	paths := mapping[m.At(at)][k]
-	if m.At(at) == k {
-		paths = [][]maps.Direction{nil}
-	}
-
-	for _, dirs := range paths {
-		newAt := at.Apply(dirs...)
-		for _, mv := range pressKey(memo, mapping, m, newAt, next) {
-			ms = append(ms, append(util.CopyList(mv), dirString(dirs)+"A"))
+func findGroups(s string) []string {
+	var groups []string
+	for idx := 0; idx < len(s); {
+		next := strings.Index(s[idx:], "A")
+		if next == -1 {
+			groups = append(groups, s[idx:])
+			break
 		}
+		groups = append(groups, s[idx:idx+next+1])
+		idx += next + 1
 	}
 
-	return filterShortest(ms, func(m moves) int { return len(m) })
+	return groups
 }
 
 func dirString(dirs []maps.Direction) string {
@@ -218,13 +196,13 @@ func fillMaps() {
 			shortest := math.MaxInt
 			var shortestMappings []int
 			for i, m := range mapping {
-				paths := pressKey(Memo{}, dirKeyMapping, dirKeyPad, aPos, dirString(m)+"A")
-				if len(paths[0].flatten()) < shortest {
-					shortest = len(paths[0].flatten())
+				paths := pressKey(dirKeyMapping, dirKeyPad, aPos, dirString(m)+"A")
+				if len(paths[0]) < shortest {
+					shortest = len(paths[0])
 					shortestMappings = nil
 				}
 
-				if len(paths[0].flatten()) == shortest {
+				if len(paths[0]) == shortest {
 					shortestMappings = append(shortestMappings, i)
 				}
 			}
@@ -294,4 +272,19 @@ func buildPaths(m maps.Map[byte], start, end maps.Coordinate) [][]maps.Coordinat
 	}
 
 	return fns.Filter(paths, func(p []maps.Coordinate) bool { return len(p) == minLength })
+}
+
+type Memo map[string]int
+
+type Mapping map[byte]map[byte][][]maps.Direction
+
+func (m Mapping) String() string {
+	var sb strings.Builder
+	for k, v := range m {
+		for k2, v2 := range v {
+			vs := strings.Join(fns.Map(v2, func(d []maps.Direction) string { return dirString(d) }), ",")
+			sb.WriteString(fmt.Sprintf("%c->%c: %s\n", k, k2, vs))
+		}
+	}
+	return sb.String()
 }

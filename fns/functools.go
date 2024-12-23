@@ -146,3 +146,24 @@ func Sum[T ~int | ~float64](s []T) T {
 	}
 	return sum
 }
+
+func Intersection[K comparable, V any](a, b map[K]V) map[K]V {
+	out := map[K]V{}
+	for k := range a {
+		if _, ok := b[k]; ok {
+			out[k] = b[k]
+		}
+	}
+	return out
+}
+
+func Union[K comparable, V any](a, b map[K]V) map[K]V {
+	out := map[K]V{}
+	for k, v := range a {
+		out[k] = v
+	}
+	for k, v := range b {
+		out[k] = v
+	}
+	return out
+}
