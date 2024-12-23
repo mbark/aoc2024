@@ -22,7 +22,6 @@ _^A
 <v>`)
 	numKeyMapping = Mapping{}
 	dirKeyMapping = Mapping{}
-	reA           = regexp.MustCompile(`A`)
 	re            = regexp.MustCompile(`[0-9]+`)
 )
 
@@ -97,10 +96,6 @@ func recurse(mapping Mapping, m maps.Map[byte], keys string, depth int) (ret int
 	return findMin(totals)
 }
 
-func length(s string) int {
-	return len(s)
-}
-
 func findMin(i []int) int {
 	min := math.MaxInt
 	for _, v := range i {
@@ -116,13 +111,9 @@ func pressKey(mapping Mapping, at byte, keys string) []string {
 	k := keys[0]
 	next := keys[1:]
 
-	paths := mapping[at][k]
-	if at == k {
-		paths = [][]maps.Direction{nil}
-	}
 	var pMoves []string
-	for _, p := range paths {
-		pMoves = append(pMoves, dirString(p)+"A")
+	for _, p := range mapping[at][k] {
+		pMoves = append(pMoves, p+"A")
 	}
 	if len(next) == 0 {
 		return pMoves
@@ -164,8 +155,8 @@ func findGroups(s string) []string {
 	return groups
 }
 
-func dirString(dirs []maps.Direction) string {
-	return strings.Join(fns.Map(dirs, func(d maps.Direction) string { return d.String() }), "")
+func length(s string) int {
+	return len(s)
 }
 
 func fillMaps() {
@@ -186,7 +177,7 @@ func fillMaps() {
 			shortest := math.MaxInt
 			var shortestMappings []int
 			for i, m := range mapping {
-				paths := pressKey(dirKeyMapping, 'A', dirString(m)+"A")
+				paths := pressKey(dirKeyMapping, 'A', m+"A")
 				if len(paths[0]) < shortest {
 					shortest = len(paths[0])
 					shortestMappings = nil
@@ -197,23 +188,24 @@ func fillMaps() {
 				}
 			}
 
-			dirKeyMapping[dirKeyPad.At(c1)][dirKeyPad.At(c2)] = fns.Map(shortestMappings, func(i int) []maps.Direction { return mapping[i] })
+			dirKeyMapping[dirKeyPad.At(c1)][dirKeyPad.At(c2)] = fns.Map(shortestMappings, func(i int) string { return mapping[i] })
 		}
 	}
 }
 
 func fillMap(m maps.Map[byte], mapping Mapping) {
+	dirString := func(dirs []maps.Direction) string {
+		return strings.Join(fns.Map(dirs, func(d maps.Direction) string { return d.String() }), "")
+	}
+
 	coords := m.Coordinates()
-	for i, c1 := range coords {
-		for j, c2 := range coords {
-			if j == i {
-				continue
-			}
+	for _, c1 := range coords {
+		for _, c2 := range coords {
 			if m.At(c1) == '_' || m.At(c2) == '_' {
 				continue
 			}
 			if _, ok := mapping[m.At(c1)]; !ok {
-				mapping[m.At(c1)] = map[byte][][]maps.Direction{}
+				mapping[m.At(c1)] = map[byte][]string{}
 			}
 
 			paths := buildPaths(m, c1, c2)
@@ -227,7 +219,7 @@ func fillMap(m maps.Map[byte], mapping Mapping) {
 				dirPaths = append(dirPaths, dirs)
 			}
 
-			mapping[m.At(c1)][m.At(c2)] = dirPaths
+			mapping[m.At(c1)][m.At(c2)] = fns.Map(dirPaths, func(d []maps.Direction) string { return dirString(d) })
 		}
 	}
 }
@@ -266,13 +258,13 @@ func buildPaths(m maps.Map[byte], start, end maps.Coordinate) [][]maps.Coordinat
 
 type Memo map[string]int
 
-type Mapping map[byte]map[byte][][]maps.Direction
+type Mapping map[byte]map[byte][]string
 
 func (m Mapping) String() string {
 	var sb strings.Builder
 	for k, v := range m {
 		for k2, v2 := range v {
-			vs := strings.Join(fns.Map(v2, func(d []maps.Direction) string { return dirString(d) }), ",")
+			vs := strings.Join(v2, ",")
 			sb.WriteString(fmt.Sprintf("%c->%c: %s\n", k, k2, vs))
 		}
 	}
